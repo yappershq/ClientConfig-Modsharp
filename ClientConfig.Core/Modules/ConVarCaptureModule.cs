@@ -157,6 +157,12 @@ internal sealed class ConVarCaptureModule : IClientListener
         if (!_captures.TryGetValue(slot, out var capture))
             return; // already finalised / timed out
 
+        // Guard a fast reconnect into the same slot: a late reply from the PREVIOUS occupant must
+        // not land in the new player's accumulator (which would corrupt the snapshot and prematurely
+        // decrement Outstanding). Drop replies whose SteamID doesn't match the active capture.
+        if ((long) (ulong) client.SteamId != capture.SteamId)
+            return;
+
         // Only store usable values; record the failure reason for diagnostics on the others.
         capture.Values[name] = status == QueryConVarValueStatus.ValueIntact
             ? value
